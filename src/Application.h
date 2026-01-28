@@ -8,6 +8,8 @@
 #include "ui/HierarchyWindow.h"
 #include "ui/LogWindow.h"
 #include "ui/ModelInfoWindow.h"
+#include "ui/LightWindow.h"
+#include "ui/SettingsWindow.h"
 #include <memory>
 
 namespace AAV {
@@ -23,6 +25,8 @@ public:
     
 private:
     void SetupImGuiDocking();
+    void SetupDefaultLayout();
+    void LoadLayoutPreset(int presetIndex);
     void HandleCallbacks();
     void OpenModelDialog();
     void LoadModelFile(const std::string& filePath);
@@ -34,6 +38,8 @@ private:
     HierarchyWindow hierarchyWindow;
     LogWindow logWindow;
     ModelInfoWindow modelInfoWindow;
+    LightWindow lightWindow;
+    SettingsWindow settingsWindow;
     
     // Model data
     std::shared_ptr<Model> currentModel;

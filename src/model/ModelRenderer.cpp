@@ -6,6 +6,10 @@ namespace AAV {
 ModelRenderer::ModelRenderer()
     : wireframeMode(false)
     , showBoundingBox(false)
+    , lightEnabled(true)
+    , lightDirection({-0.5f, -1.0f, -0.3f})
+    , lightColor(WHITE)
+    , lightIntensity(1.0f)
 {
 }
 

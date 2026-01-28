@@ -2,6 +2,7 @@
 #include "raylib.h"
 #include "rlImGui.h"
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "nfd.hpp"
 #include "util/Logger.h"
 #include <iostream>
@@ -82,6 +83,8 @@ void Application::Run() {
         inspectorWindow.Render(currentModel, selectedNode);
         logWindow.Render();
         modelInfoWindow.Render(currentModel);
+        lightWindow.Render(&sceneWindow);
+        settingsWindow.Render(&sceneWindow);
         
         // Show ImGui demo if requested
         if (showImGuiDemo) {
@@ -165,14 +168,21 @@ void Application::HandleCallbacks() {
         modelInfoWindow.SetVisible(!modelInfoWindow.IsVisible());
     };
     
+    menuBar.onToggleLight = [this]() {
+        lightWindow.SetVisible(!lightWindow.IsVisible());
+    };
+    
+    menuBar.onToggleSettings = [this]() {
+        settingsWindow.Open();
+    };
+    
     menuBar.onResetCamera = [this]() {
         sceneWindow.ResetCamera();
     };
     
     // Window menu callbacks
     menuBar.onLoadLayout = [this](int layout) {
-        // TODO: Implement layout presets
-        std::cout << "Load layout preset: " << layout << std::endl;
+        LoadLayoutPreset(layout);
     };
     
     // Help menu callbacks
@@ -217,6 +227,108 @@ void Application::LoadModelFile(const std::string& filePath) {
     } else {
         Logger::Error("Failed to load model: " + modelLoader.GetLastError());
     }
+}
+
+void Application::SetupDefaultLayout() {
+    // Setup default layout on first run
+    static bool firstTime = true;
+    if (!firstTime) return;
+    firstTime = false;
+    
+    LoadLayoutPreset(0); // Load classic layout by default
+}
+
+void Application::LoadLayoutPreset(int presetIndex) {
+    ImGuiID dockspace_id = ImGui::GetID("MainDockSpace");
+    
+    // Clear existing layout
+    ImGui::DockBuilderRemoveNode(dockspace_id);
+    ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+    
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->WorkSize);
+    
+    // Create dock IDs for different areas
+    ImGuiID dock_main_id = dockspace_id;
+    ImGuiID dock_left_id;
+    ImGuiID dock_right_id;
+    ImGuiID dock_bottom_id;
+    ImGuiID dock_left_top;
+    ImGuiID dock_left_middle;
+    ImGuiID dock_left_bottom;
+    
+    switch (presetIndex) {
+        case 0: // Classic Layout
+            // Split left sidebar
+            dock_left_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.23f, nullptr, &dock_main_id);
+            
+            // Split bottom for log
+            dock_bottom_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.35f, nullptr, &dock_main_id);
+            
+            // Split left sidebar vertically
+            dock_left_top = ImGui::DockBuilderSplitNode(dock_left_id, ImGuiDir_Up, 0.33f, nullptr, &dock_left_id);
+            dock_left_middle = ImGui::DockBuilderSplitNode(dock_left_id, ImGuiDir_Up, 0.5f, nullptr, &dock_left_bottom);
+            
+            // Dock windows
+            ImGui::DockBuilderDockWindow("Hierarchy", dock_left_top);
+            ImGui::DockBuilderDockWindow("Inspector", dock_left_middle);
+            ImGui::DockBuilderDockWindow("Model Info", dock_left_bottom);
+            ImGui::DockBuilderDockWindow("Scene", dock_main_id);
+            ImGui::DockBuilderDockWindow("Log", dock_bottom_id);
+            ImGui::DockBuilderDockWindow("Lighting", dock_left_bottom);
+            ImGui::DockBuilderDockWindow("Settings", dock_left_bottom);
+            break;
+            
+        case 1: // Wide Inspector Layout
+            // Split left sidebar (wider)
+            dock_left_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.30f, nullptr, &dock_main_id);
+            
+            // Split right sidebar
+            dock_right_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.25f, nullptr, &dock_main_id);
+            
+            // Split bottom for log
+            dock_bottom_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.30f, nullptr, &dock_main_id);
+            
+            // Split left sidebar
+            dock_left_top = ImGui::DockBuilderSplitNode(dock_left_id, ImGuiDir_Up, 0.4f, nullptr, &dock_left_id);
+            
+            // Dock windows
+            ImGui::DockBuilderDockWindow("Hierarchy", dock_left_top);
+            ImGui::DockBuilderDockWindow("Inspector", dock_left_id);
+            ImGui::DockBuilderDockWindow("Model Info", dock_right_id);
+            ImGui::DockBuilderDockWindow("Lighting", dock_right_id);
+            ImGui::DockBuilderDockWindow("Settings", dock_right_id);
+            ImGui::DockBuilderDockWindow("Scene", dock_main_id);
+            ImGui::DockBuilderDockWindow("Log", dock_bottom_id);
+            break;
+            
+        case 2: // Full Scene Layout
+            // Small left sidebar
+            dock_left_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.15f, nullptr, &dock_main_id);
+            
+            // Small right sidebar
+            dock_right_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.18f, nullptr, &dock_main_id);
+            
+            // Very small bottom for log
+            dock_bottom_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.20f, nullptr, &dock_main_id);
+            
+            // Split left for hierarchy stacking
+            dock_left_top = ImGui::DockBuilderSplitNode(dock_left_id, ImGuiDir_Up, 0.5f, nullptr, &dock_left_id);
+            
+            // Dock windows - Scene maximized
+            ImGui::DockBuilderDockWindow("Scene", dock_main_id);
+            ImGui::DockBuilderDockWindow("Hierarchy", dock_left_top);
+            ImGui::DockBuilderDockWindow("Model Info", dock_left_id);
+            ImGui::DockBuilderDockWindow("Inspector", dock_right_id);
+            ImGui::DockBuilderDockWindow("Lighting", dock_right_id);
+            ImGui::DockBuilderDockWindow("Settings", dock_right_id);
+            ImGui::DockBuilderDockWindow("Log", dock_bottom_id);
+            break;
+    }
+    
+    ImGui::DockBuilderFinish(dockspace_id);
+    
+    Logger::Info("Loaded layout preset: " + std::to_string(presetIndex));
 }
 
 } // namespace AAV

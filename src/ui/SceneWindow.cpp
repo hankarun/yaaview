@@ -15,6 +15,14 @@ SceneWindow::SceneWindow()
     , cameraRotationY(45.0f)
     , cameraTarget({0.0f, 0.0f, 0.0f})
     , lastMousePos({0.0f, 0.0f})
+    , lightEnabled(true)
+    , lightDirection({-0.5f, -1.0f, -0.3f})
+    , lightColor(WHITE)
+    , lightIntensity(1.0f)
+    , gridEnabled(true)
+    , gridSize(1.0f)
+    , gridDivisions(10)
+    , backgroundColor({45, 45, 48, 255})
 {
 }
 
@@ -188,12 +196,20 @@ void SceneWindow::Render(std::shared_ptr<Model> model) {
 void SceneWindow::RenderScene(std::shared_ptr<Model> model) {
     BeginTextureMode(renderTexture);
     
-    ClearBackground(Color{45, 45, 48, 255});
+    ClearBackground(backgroundColor);
     
     BeginMode3D(camera);
     
-    // Render grid
-    renderer.RenderGrid(1.0f, 10);
+    // Sync lighting settings to renderer
+    renderer.SetLightEnabled(lightEnabled);
+    renderer.SetLightDirection(lightDirection);
+    renderer.SetLightColor(lightColor);
+    renderer.SetLightIntensity(lightIntensity);
+    
+    // Render grid if enabled
+    if (gridEnabled) {
+        renderer.RenderGrid(gridSize, gridDivisions);
+    }
     
     // Render model if loaded
     if (model && model->IsLoaded()) {

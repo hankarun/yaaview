@@ -9,6 +9,8 @@ MainMenuBar::MainMenuBar()
     , hierarchyVisible(true)
     , logVisible(true)
     , modelInfoVisible(true)
+    , lightVisible(true)
+    , settingsVisible(true)
     , showAboutPopup(false)
     , showControlsPopup(false)
 {
@@ -36,8 +38,8 @@ void MainMenuBar::Render() {
         
         // Edit Menu
         if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItem("Preferences", nullptr, false, false)) {
-                // TODO: Implement preferences
+            if (ImGui::MenuItem("Preferences", "Ctrl+,")) {
+                if (onToggleSettings) onToggleSettings();
             }
             ImGui::EndMenu();
         }
@@ -67,6 +69,11 @@ void MainMenuBar::Render() {
             if (ImGui::MenuItem("Model Info", nullptr, modelInfoVisible)) {
                 modelInfoVisible = !modelInfoVisible;
                 if (onToggleModelInfo) onToggleModelInfo();
+            }
+            
+            if (ImGui::MenuItem("Lighting", nullptr, lightVisible)) {
+                lightVisible = !lightVisible;
+                if (onToggleLight) onToggleLight();
             }
             
             ImGui::Separator();

@@ -78,6 +78,8 @@ add_executable(${PROJECT_NAME}
     src/ui/HierarchyWindow.cpp
     src/ui/LogWindow.cpp
     src/ui/ModelInfoWindow.cpp
+    src/ui/LightWindow.cpp
+    src/ui/SettingsWindow.cpp
     src/util/Logger.cpp
 )
 
