@@ -2,6 +2,8 @@
 
 #include "Model.h"
 #include "raylib.h"
+#include "../rendering/IBLManager.h"
+#include <memory>
 
 namespace AAV {
 
@@ -15,6 +17,7 @@ public:
     void RenderWireframe(const Model& model);
     void RenderBoundingBox(const Model& model);
     void RenderGrid(float size, int divisions);
+    void RenderSkybox(Camera3D camera, int viewportWidth, int viewportHeight);
     
     void SetWireframeMode(bool enabled) { wireframeMode = enabled; }
     bool GetWireframeMode() const { return wireframeMode; }
@@ -35,7 +38,16 @@ public:
     void SetNormalMappingEnabled(bool enabled) { normalMappingEnabled = enabled; }
     bool GetNormalMappingEnabled() const { return normalMappingEnabled; }
     
+    void SetIBLEnabled(bool enabled) { iblEnabled = enabled; }
+    bool GetIBLEnabled() const { return iblEnabled; }
+    
+    void SetSkyboxEnabled(bool enabled);
+    bool GetSkyboxEnabled() const;
+    
     bool IsShadersLoaded() const { return shadersLoaded; }
+    
+    // IBL access
+    IBLManager* GetIBLManager() { return iblManager.get(); }
     
 private:
     void RenderNodeHierarchy(NodeData* node, const Matrix& parentTransform, const Model& model, Camera3D camera);
@@ -56,6 +68,10 @@ private:
     bool shadersLoaded;
     bool pbrEnabled;
     bool normalMappingEnabled;
+    bool iblEnabled;
+    
+    // IBL system
+    std::unique_ptr<IBLManager> iblManager;
 };
 
 } // namespace AAV

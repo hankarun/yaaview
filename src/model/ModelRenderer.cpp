@@ -15,6 +15,8 @@ ModelRenderer::ModelRenderer()
     , shadersLoaded(false)
     , pbrEnabled(true)
     , normalMappingEnabled(true)
+    , iblEnabled(true)
+    , iblManager(std::make_unique<IBLManager>())
 {
 }
 
@@ -41,32 +43,17 @@ void ModelRenderer::Initialize() {
         pbrShader.locs[SHADER_LOC_MATRIX_NORMAL] = GetShaderLocation(pbrShader, "matNormal");
         pbrShader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(pbrShader, "viewPos");
     }
+    
+    // Initialize IBL system
+    if (iblManager) {
+        iblManager->Initialize();
+    }
 }
 
 void ModelRenderer::Render(const Model& model, Camera3D camera) {
     if (!model.IsLoaded()) return;
     
     Matrix modelTransform = model.GetTransformMatrix();
-    
-    // Set shader uniforms if PBR is enabled and shaders are loaded
-    if (pbrEnabled && shadersLoaded && lightEnabled) {
-        // Set lighting uniforms
-        Vector3 normLightDir = Vector3Normalize(lightDirection);
-        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "lightDirection"), &normLightDir, SHADER_UNIFORM_VEC3);
-        
-        Vector3 lightColorVec = {lightColor.r / 255.0f, lightColor.g / 255.0f, lightColor.b / 255.0f};
-        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "lightColor"), &lightColorVec, SHADER_UNIFORM_VEC3);
-        
-        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "lightIntensity"), &lightIntensity, SHADER_UNIFORM_FLOAT);
-        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "viewPos"), &camera.position, SHADER_UNIFORM_VEC3);
-        
-        // Set feature toggles
-        int pbrEnabledInt = pbrEnabled ? 1 : 0;
-        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "enablePBR"), &pbrEnabledInt, SHADER_UNIFORM_INT);
-        
-        int normalMappingEnabledInt = normalMappingEnabled ? 1 : 0;
-        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "enableNormalMapping"), &normalMappingEnabledInt, SHADER_UNIFORM_INT);
-    }
     
     // Check if we have a node hierarchy
     auto rootNode = model.GetRootNode();
@@ -83,23 +70,69 @@ void ModelRenderer::Render(const Model& model, Camera3D camera) {
         }
         
         const auto& meshes = model.GetMeshes();
+        
+        // Begin shader mode if PBR is enabled
+        if (pbrEnabled && shadersLoaded && lightEnabled) {
+            BeginShaderMode(pbrShader);
+            
+            // Set shader uniforms AFTER shader is active
+            // Set lighting uniforms
+            Vector3 normLightDir = Vector3Normalize(lightDirection);
+            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "lightDirection"), &normLightDir, SHADER_UNIFORM_VEC3);
+            
+            Vector3 lightColorVec = {lightColor.r / 255.0f, lightColor.g / 255.0f, lightColor.b / 255.0f};
+            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "lightColor"), &lightColorVec, SHADER_UNIFORM_VEC3);
+            
+            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "lightIntensity"), &lightIntensity, SHADER_UNIFORM_FLOAT);
+            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "viewPos"), &camera.position, SHADER_UNIFORM_VEC3);
+            
+            // Set feature toggles
+            int pbrEnabledInt = 1;
+            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "enablePBR"), &pbrEnabledInt, SHADER_UNIFORM_INT);
+            
+            int normalMappingEnabledInt = normalMappingEnabled ? 1 : 0;
+            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "enableNormalMapping"), &normalMappingEnabledInt, SHADER_UNIFORM_INT);
+            
+            // Set IBL uniforms
+            int iblEnabledInt = iblEnabled ? 1 : 0;
+            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "enableIBL"), &iblEnabledInt, SHADER_UNIFORM_INT);
+            
+            if (iblEnabled && iblManager && iblManager->IsLoaded()) {
+                // Set IBL texture uniforms with explicit texture slots
+                int irradianceLoc = GetShaderLocation(pbrShader, "irradianceMap");
+                rlActiveTextureSlot(6);
+                SetShaderValueTexture(pbrShader, irradianceLoc, iblManager->GetIrradianceMap());
+                
+                int prefilterLoc = GetShaderLocation(pbrShader, "prefilterMap");
+                rlActiveTextureSlot(7);
+                SetShaderValueTexture(pbrShader, prefilterLoc, iblManager->GetPrefilterMap());
+                
+                int brdfLoc = GetShaderLocation(pbrShader, "brdfLUT");
+                rlActiveTextureSlot(8);
+                SetShaderValueTexture(pbrShader, brdfLoc, iblManager->GetBRDFLUT());
+            }
+        }
+        
         for (const auto& meshData : meshes) {
-            // Apply shader to material if PBR is enabled
-            Material mat = meshData.material;
+            // Set material uniforms if PBR is enabled
             if (pbrEnabled && shadersLoaded && lightEnabled) {
-                mat.shader = pbrShader;
                 // Set material uniforms using the material index
                 if (meshData.materialIndex >= 0 && meshData.materialIndex < (int)model.GetMaterials().size()) {
                     SetMaterialUniforms(model.GetMaterials()[meshData.materialIndex]);
                 }
             }
             
-            DrawMesh(meshData.mesh, mat, MatrixIdentity());
+            DrawMesh(meshData.mesh, meshData.material, MatrixIdentity());
             
             // Draw per-mesh bounding box if enabled
             if (showBoundingBox) {
                 RenderMeshBoundingBox(meshData, modelTransform);
             }
+        }
+        
+        // End shader mode if PBR is enabled
+        if (pbrEnabled && shadersLoaded && lightEnabled) {
+            EndShaderMode();
         }
         
         if (wireframeMode) {
@@ -125,28 +158,73 @@ void ModelRenderer::RenderNodeHierarchy(NodeData* node, const Matrix& parentTran
             rlEnableWireMode();
         }
         
+        // Begin shader mode if PBR is enabled
+        if (pbrEnabled && shadersLoaded && lightEnabled) {
+            BeginShaderMode(pbrShader);
+            
+            // Set shader uniforms AFTER shader is active
+            // Set lighting uniforms
+            Vector3 normLightDir = Vector3Normalize(lightDirection);
+            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "lightDirection"), &normLightDir, SHADER_UNIFORM_VEC3);
+            
+            Vector3 lightColorVec = {lightColor.r / 255.0f, lightColor.g / 255.0f, lightColor.b / 255.0f};
+            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "lightColor"), &lightColorVec, SHADER_UNIFORM_VEC3);
+            
+            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "lightIntensity"), &lightIntensity, SHADER_UNIFORM_FLOAT);
+            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "viewPos"), &camera.position, SHADER_UNIFORM_VEC3);
+            
+            // Set feature toggles
+            int pbrEnabledInt = 1;
+            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "enablePBR"), &pbrEnabledInt, SHADER_UNIFORM_INT);
+            
+            int normalMappingEnabledInt = normalMappingEnabled ? 1 : 0;
+            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "enableNormalMapping"), &normalMappingEnabledInt, SHADER_UNIFORM_INT);
+            
+            // Set IBL uniforms
+            int iblEnabledInt = iblEnabled ? 1 : 0;
+            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "enableIBL"), &iblEnabledInt, SHADER_UNIFORM_INT);
+            
+            if (iblEnabled && iblManager && iblManager->IsLoaded()) {
+                // Set IBL texture uniforms with explicit texture slots
+                int irradianceLoc = GetShaderLocation(pbrShader, "irradianceMap");
+                rlActiveTextureSlot(6);
+                SetShaderValueTexture(pbrShader, irradianceLoc, iblManager->GetIrradianceMap());
+                
+                int prefilterLoc = GetShaderLocation(pbrShader, "prefilterMap");
+                rlActiveTextureSlot(7);
+                SetShaderValueTexture(pbrShader, prefilterLoc, iblManager->GetPrefilterMap());
+                
+                int brdfLoc = GetShaderLocation(pbrShader, "brdfLUT");
+                rlActiveTextureSlot(8);
+                SetShaderValueTexture(pbrShader, brdfLoc, iblManager->GetBRDFLUT());
+            }
+        }
+        
         const auto& meshes = model.GetMeshes();
         for (int meshIndex : node->meshIndices) {
             if (meshIndex >= 0 && meshIndex < (int)meshes.size()) {
                 const auto& meshData = meshes[meshIndex];
                 
-                // Apply shader to material if PBR is enabled
-                Material mat = meshData.material;
+                // Set material uniforms if PBR is enabled
                 if (pbrEnabled && shadersLoaded && lightEnabled) {
-                    mat.shader = pbrShader;
                     // Set material uniforms using the material index
                     if (meshData.materialIndex >= 0 && meshData.materialIndex < (int)model.GetMaterials().size()) {
                         SetMaterialUniforms(model.GetMaterials()[meshData.materialIndex]);
                     }
                 }
                 
-                DrawMesh(meshData.mesh, mat, MatrixIdentity());
+                DrawMesh(meshData.mesh, meshData.material, MatrixIdentity());
                 
                 // Draw per-mesh bounding box if enabled
                 if (showBoundingBox) {
                     RenderMeshBoundingBox(meshData, worldTransform);
                 }
             }
+        }
+        
+        // End shader mode if PBR is enabled
+        if (pbrEnabled && shadersLoaded && lightEnabled) {
+            EndShaderMode();
         }
         
         if (wireframeMode) {
@@ -280,6 +358,25 @@ void ModelRenderer::SetMaterialUniforms(const MaterialData& material) {
 
 void ModelRenderer::RenderGrid(float size, int divisions) {
     DrawGrid(divisions, size);
+}
+
+void ModelRenderer::RenderSkybox(Camera3D camera, int viewportWidth, int viewportHeight) {
+    if (iblManager && iblManager->IsLoaded()) {
+        iblManager->RenderSkybox(camera, viewportWidth, viewportHeight);
+    }
+}
+
+void ModelRenderer::SetSkyboxEnabled(bool enabled) {
+    if (iblManager) {
+        iblManager->SetSkyboxEnabled(enabled);
+    }
+}
+
+bool ModelRenderer::GetSkyboxEnabled() const {
+    if (iblManager) {
+        return iblManager->IsSkyboxEnabled();
+    }
+    return false;
 }
 
 } // namespace AAV

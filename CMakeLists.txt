@@ -72,6 +72,7 @@ add_executable(${PROJECT_NAME}
     src/model/Model.cpp
     src/model/ModelLoader.cpp
     src/model/ModelRenderer.cpp
+    src/rendering/IBLManager.cpp
     src/ui/MainMenuBar.cpp
     src/ui/SceneWindow.cpp
     src/ui/InspectorWindow.cpp
@@ -120,4 +121,12 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     ${CMAKE_SOURCE_DIR}/shaders
     ${CMAKE_BINARY_DIR}/bin/shaders
     COMMENT "Copying shader files to build directory"
+)
+
+# Copy HDR files to build directory
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/hdr
+    ${CMAKE_BINARY_DIR}/bin/hdr
+    COMMENT "Copying HDR files to build directory"
 )

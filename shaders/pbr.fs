@@ -38,11 +38,18 @@ uniform vec3 lightColor;
 uniform float lightIntensity;
 uniform vec3 viewPos;
 
+// IBL uniforms
+uniform samplerCube irradianceMap;
+uniform samplerCube prefilterMap;
+uniform sampler2D brdfLUT;
+
 // Feature toggles
 uniform bool enablePBR;
 uniform bool enableNormalMapping;
+uniform bool enableIBL;
 
 const float PI = 3.14159265359;
+const int MAX_REFLECTION_LOD = 4;
 
 // Normal Distribution Function (GGX/Trowbridge-Reitz)
 float DistributionGGX(vec3 N, vec3 H, float roughness)
@@ -85,6 +92,12 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 vec3 FresnelSchlick(float cosTheta, vec3 F0)
 {
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+// Fresnel with roughness for IBL
+vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
 // Get normal from normal map or use vertex normal
@@ -160,8 +173,35 @@ void main()
         // Final outgoing radiance
         vec3 Lo = (diffuse + specular) * radiance * NdotL;
         
-        // Ambient lighting (simple approximation)
-        vec3 ambient = vec3(0.03) * albedo * ao;
+        // Ambient lighting with IBL
+        vec3 ambient;
+        if (enableIBL)
+        {
+            // IBL ambient lighting
+            vec3 R = reflect(-V, N);
+            
+            // Fresnel for IBL
+            vec3 F_ibl = FresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+            vec3 kS_ibl = F_ibl;
+            vec3 kD_ibl = vec3(1.0) - kS_ibl;
+            kD_ibl *= 1.0 - metallic;
+            
+            // Diffuse IBL
+            vec3 irradiance = texture(irradianceMap, N).rgb;
+            vec3 diffuse_ibl = irradiance * albedo;
+            
+            // Specular IBL
+            vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * float(MAX_REFLECTION_LOD)).rgb;
+            vec2 envBRDF = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
+            vec3 specular_ibl = prefilteredColor * (F_ibl * envBRDF.x + envBRDF.y);
+            
+            ambient = (kD_ibl * diffuse_ibl + specular_ibl) * ao;
+        }
+        else
+        {
+            // Simple ambient approximation
+            ambient = vec3(0.03) * albedo * ao;
+        }
         
         // Add emissive
         vec3 color = ambient + Lo + emissive;

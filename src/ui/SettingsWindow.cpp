@@ -128,6 +128,29 @@ void SettingsWindow::Render(SceneWindow* sceneWindow) {
                 ImGui::EndTooltip();
             }
             
+            bool iblEnabled = renderer.GetIBLEnabled();
+            if (ImGui::Checkbox("Enable IBL (Image-Based Lighting)", &iblEnabled)) {
+                renderer.SetIBLEnabled(iblEnabled);
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("(?)");
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::TextUnformatted("Use environment maps for ambient lighting and reflections");
+                ImGui::EndTooltip();
+            }
+            
+            if (iblEnabled) {
+                ImGui::Indent();
+                
+                bool skyboxEnabled = renderer.GetSkyboxEnabled();
+                if (ImGui::Checkbox("Show Skybox", &skyboxEnabled)) {
+                    renderer.SetSkyboxEnabled(skyboxEnabled);
+                }
+                
+                ImGui::Unindent();
+            }
+            
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
@@ -136,6 +159,7 @@ void SettingsWindow::Render(SceneWindow* sceneWindow) {
             ImGui::BulletText("Metallic-Roughness PBR workflow");
             ImGui::BulletText("Directional lighting");
             ImGui::BulletText("Normal mapping");
+            ImGui::BulletText("Image-Based Lighting (IBL)");
             ImGui::BulletText("Emissive materials");
             ImGui::BulletText("Ambient occlusion");
             ImGui::BulletText("HDR tone mapping");
@@ -158,6 +182,8 @@ void SettingsWindow::Render(SceneWindow* sceneWindow) {
         sceneWindow->GetRenderer().SetShowBoundingBox(false);
         sceneWindow->GetRenderer().SetPBREnabled(true);
         sceneWindow->GetRenderer().SetNormalMappingEnabled(true);
+        sceneWindow->GetRenderer().SetIBLEnabled(true);
+        sceneWindow->GetRenderer().SetSkyboxEnabled(true);
     }
     
     ImGui::SameLine();
