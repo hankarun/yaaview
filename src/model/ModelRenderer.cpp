@@ -15,28 +15,71 @@ ModelRenderer::~ModelRenderer() {
 void ModelRenderer::Render(const Model& model) {
     if (!model.IsLoaded()) return;
     
-    Matrix transform = model.GetTransformMatrix();
+    Matrix modelTransform = model.GetTransformMatrix();
     
-    rlPushMatrix();
-    rlMultMatrixf(MatrixToFloat(transform));
-    
-    if (wireframeMode) {
-        rlEnableWireMode();
+    // Check if we have a node hierarchy
+    auto rootNode = model.GetRootNode();
+    if (rootNode) {
+        // Render using hierarchical transforms
+        RenderNodeHierarchy(rootNode.get(), modelTransform, model);
+    } else {
+        // Fallback: render all meshes directly (flat hierarchy)
+        rlPushMatrix();
+        rlMultMatrixf(MatrixToFloat(modelTransform));
+        
+        if (wireframeMode) {
+            rlEnableWireMode();
+        }
+        
+        for (const auto& meshData : model.GetMeshes()) {
+            DrawMesh(meshData.mesh, meshData.material, MatrixIdentity());
+        }
+        
+        if (wireframeMode) {
+            rlDisableWireMode();
+        }
+        
+        rlPopMatrix();
     }
-    
-    // Render all meshes
-    for (const auto& meshData : model.GetMeshes()) {
-        DrawMesh(meshData.mesh, meshData.material, MatrixIdentity());
-    }
-    
-    if (wireframeMode) {
-        rlDisableWireMode();
-    }
-    
-    rlPopMatrix();
     
     if (showBoundingBox) {
         RenderBoundingBox(model);
+    }
+}
+
+void ModelRenderer::RenderNodeHierarchy(NodeData* node, const Matrix& parentTransform, const Model& model) {
+    if (!node) return;
+    
+    // Accumulate transform: local transform * parent transform
+    Matrix worldTransform = MatrixMultiply(node->transform, parentTransform);
+    
+    // Render all meshes attached to this node
+    if (!node->meshIndices.empty()) {
+        rlPushMatrix();
+        rlMultMatrixf(MatrixToFloat(worldTransform));
+        
+        if (wireframeMode) {
+            rlEnableWireMode();
+        }
+        
+        const auto& meshes = model.GetMeshes();
+        for (int meshIndex : node->meshIndices) {
+            if (meshIndex >= 0 && meshIndex < (int)meshes.size()) {
+                const auto& meshData = meshes[meshIndex];
+                DrawMesh(meshData.mesh, meshData.material, MatrixIdentity());
+            }
+        }
+        
+        if (wireframeMode) {
+            rlDisableWireMode();
+        }
+        
+        rlPopMatrix();
+    }
+    
+    // Recursively render all children
+    for (const auto& child : node->children) {
+        RenderNodeHierarchy(child.get(), worldTransform, model);
     }
 }
 

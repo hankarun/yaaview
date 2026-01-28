@@ -22,6 +22,8 @@ public:
     bool GetShowBoundingBox() const { return showBoundingBox; }
     
 private:
+    void RenderNodeHierarchy(NodeData* node, const Matrix& parentTransform, const Model& model);
+    
     bool wireframeMode;
     bool showBoundingBox;
 };

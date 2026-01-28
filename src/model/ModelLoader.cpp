@@ -1,4 +1,5 @@
 #include "ModelLoader.h"
+#include "../util/Logger.h"
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -51,7 +52,7 @@ std::shared_ptr<Model> ModelLoader::LoadModel(const std::string& filePath) {
     modelDirectory = (lastSlash != std::string::npos) ? 
         filePath.substr(0, lastSlash) : ".";
     
-    std::cout << "Loading materials and textures..." << std::endl;
+    Logger::Info("Processing materials and textures...");
     
     // Load materials
     for (unsigned int i = 0; i < scene->mNumMaterials; i++) {
@@ -109,7 +110,7 @@ std::shared_ptr<Model> ModelLoader::LoadModel(const std::string& filePath) {
                 if (texIndex >= 0 && texIndex < (int)scene->mNumTextures) {
                     return LoadEmbeddedTexture(scene->mTextures[texIndex]);
                 } else {
-                    std::cerr << "  ✗ Invalid embedded texture index: " << texPath << std::endl;
+                    Logger::Error("Invalid embedded texture index: " + texPath);
                     return {0};
                 }
             } else {
@@ -188,7 +189,8 @@ std::shared_ptr<Model> ModelLoader::LoadModel(const std::string& filePath) {
         model->AddMaterial(material);
     }
     
-    std::cout << "Loaded " << scene->mNumMaterials << " materials" << std::endl;
+    Logger::Info("Loaded " + std::to_string(scene->mNumMaterials) + " materials");
+    Logger::Info("Processing meshes...");
     
     // Load meshes
     for (unsigned int i = 0; i < scene->mNumMeshes; i++) {
@@ -307,6 +309,9 @@ std::shared_ptr<Model> ModelLoader::LoadModel(const std::string& filePath) {
         model->AddMesh(meshData);
     }
     
+    Logger::Info("Loaded " + std::to_string(scene->mNumMeshes) + " meshes");
+    Logger::Info("Processing animations...");
+    
     // Load animations
     for (unsigned int i = 0; i < scene->mNumAnimations; i++) {
         aiAnimation* anim = scene->mAnimations[i];
@@ -317,24 +322,31 @@ std::shared_ptr<Model> ModelLoader::LoadModel(const std::string& filePath) {
         model->AddAnimation(animData);
     }
     
+    Logger::Info("Loaded " + std::to_string(scene->mNumAnimations) + " animations");
+    Logger::Info("Building node hierarchy...");
+    
     // Build complete scene hierarchy recursively
     auto rootNode = ProcessNode(scene->mRootNode, nullptr);
     model->SetRootNode(rootNode);
+    
+    int totalNodes = CountNodes(rootNode.get());
+    Logger::Info("Processed " + std::to_string(totalNodes) + " nodes");
     
     // Calculate overall bounding box
     model->CalculateBoundingBox();
     model->SetLoaded(true);
     
     // Log statistics
-    int totalNodes = CountNodes(rootNode.get());
-    std::cout << "Model loaded successfully: " << filename << std::endl;
-    std::cout << "  Meshes: " << model->GetMeshCount() << std::endl;
-    std::cout << "  Vertices: " << model->GetTotalVertices() << std::endl;
-    std::cout << "  Faces: " << model->GetTotalFaces() << std::endl;
-    std::cout << "  Materials: " << model->GetMaterialCount() << std::endl;
-    std::cout << "  Textures: " << model->GetTotalTexturesLoaded() << std::endl;
-    std::cout << "  Nodes: " << totalNodes << std::endl;
-    std::cout << "  Animations: " << model->GetAnimationCount() << std::endl;
+    Logger::Info("========================================");
+    Logger::Info("Model loaded successfully: " + filename);
+    Logger::Info("  Meshes: " + std::to_string(model->GetMeshCount()));
+    Logger::Info("  Vertices: " + std::to_string(model->GetTotalVertices()));
+    Logger::Info("  Faces: " + std::to_string(model->GetTotalFaces()));
+    Logger::Info("  Materials: " + std::to_string(model->GetMaterialCount()));
+    Logger::Info("  Textures: " + std::to_string(model->GetTotalTexturesLoaded()));
+    Logger::Info("  Nodes: " + std::to_string(totalNodes));
+    Logger::Info("  Animations: " + std::to_string(model->GetAnimationCount()));
+    Logger::Info("========================================");
     
     return model;
 }
@@ -398,7 +410,7 @@ Texture2D ModelLoader::LoadTextureFromFile(const std::string& path) {
     if (FileExists(path.c_str())) {
         tex = LoadTexture(path.c_str());
         if (tex.id != 0) {
-            std::cout << "  ✓ Loaded texture: " << path << std::endl;
+            Logger::Info("  ✓ Loaded texture: " + path);
             return tex;
         }
     }
@@ -408,7 +420,7 @@ Texture2D ModelLoader::LoadTextureFromFile(const std::string& path) {
     if (FileExists(fullPath.c_str())) {
         tex = LoadTexture(fullPath.c_str());
         if (tex.id != 0) {
-            std::cout << "  ✓ Loaded texture: " << fullPath << std::endl;
+            Logger::Info("  ✓ Loaded texture: " + fullPath);
             return tex;
         }
     }
@@ -421,7 +433,7 @@ Texture2D ModelLoader::LoadTextureFromFile(const std::string& path) {
         if (FileExists(fullPath.c_str())) {
             tex = LoadTexture(fullPath.c_str());
             if (tex.id != 0) {
-                std::cout << "  ✓ Loaded texture: " << fullPath << std::endl;
+                Logger::Info("  ✓ Loaded texture: " + fullPath);
                 return tex;
             }
         }
@@ -434,7 +446,7 @@ Texture2D ModelLoader::LoadTextureFromFile(const std::string& path) {
         if (FileExists(fullPath.c_str())) {
             tex = LoadTexture(fullPath.c_str());
             if (tex.id != 0) {
-                std::cout << "  ✓ Loaded texture: " << fullPath << std::endl;
+                Logger::Info("  ✓ Loaded texture: " + fullPath);
                 return tex;
             }
         }
@@ -446,7 +458,7 @@ Texture2D ModelLoader::LoadTextureFromFile(const std::string& path) {
             if (FileExists(fullPath.c_str())) {
                 tex = LoadTexture(fullPath.c_str());
                 if (tex.id != 0) {
-                    std::cout << "  ✓ Loaded texture: " << fullPath << std::endl;
+                    Logger::Info("  ✓ Loaded texture: " + fullPath);
                     return tex;
                 }
             }
@@ -454,7 +466,7 @@ Texture2D ModelLoader::LoadTextureFromFile(const std::string& path) {
     }
     
     // All strategies failed
-    std::cerr << "  ✗ Failed to load texture: " << path << std::endl;
+    Logger::Warning("  ✗ Failed to load texture: " + path);
     return tex;
 }
 
@@ -485,10 +497,10 @@ Texture2D ModelLoader::LoadEmbeddedTexture(const aiTexture* aiTex) {
         if (img.data) {
             tex = LoadTextureFromImage(img);
             UnloadImage(img);
-            std::cout << "  ✓ Loaded embedded texture (" << format << ", " 
-                      << tex.width << "x" << tex.height << ")" << std::endl;
+            Logger::Info("  ✓ Loaded embedded texture (" + format + ", " + 
+                        std::to_string(tex.width) + "x" + std::to_string(tex.height) + ")");
         } else {
-            std::cerr << "  ✗ Failed to decode embedded texture" << std::endl;
+            Logger::Error("  ✗ Failed to decode embedded texture");
         }
     } else {
         // Uncompressed ARGB8888 format
@@ -505,8 +517,8 @@ Texture2D ModelLoader::LoadEmbeddedTexture(const aiTexture* aiTex) {
         tex = LoadTextureFromImage(imgCopy);
         UnloadImage(imgCopy);
         
-        std::cout << "  ✓ Loaded embedded texture (raw, " 
-                  << tex.width << "x" << tex.height << ")" << std::endl;
+        Logger::Info("  ✓ Loaded embedded texture (raw, " + 
+                    std::to_string(tex.width) + "x" + std::to_string(tex.height) + ")");
     }
     
     return tex;

@@ -7,6 +7,8 @@ MainMenuBar::MainMenuBar()
     : inspectorVisible(true)
     , sceneVisible(true)
     , hierarchyVisible(true)
+    , logVisible(true)
+    , modelInfoVisible(true)
     , showAboutPopup(false)
     , showControlsPopup(false)
 {
@@ -55,6 +57,16 @@ void MainMenuBar::Render() {
             if (ImGui::MenuItem("Hierarchy", nullptr, hierarchyVisible)) {
                 hierarchyVisible = !hierarchyVisible;
                 if (onToggleHierarchy) onToggleHierarchy();
+            }
+            
+            if (ImGui::MenuItem("Log", nullptr, logVisible)) {
+                logVisible = !logVisible;
+                if (onToggleLog) onToggleLog();
+            }
+            
+            if (ImGui::MenuItem("Model Info", nullptr, modelInfoVisible)) {
+                modelInfoVisible = !modelInfoVisible;
+                if (onToggleModelInfo) onToggleModelInfo();
             }
             
             ImGui::Separator();

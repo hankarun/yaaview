@@ -6,6 +6,8 @@
 #include "ui/SceneWindow.h"
 #include "ui/InspectorWindow.h"
 #include "ui/HierarchyWindow.h"
+#include "ui/LogWindow.h"
+#include "ui/ModelInfoWindow.h"
 #include <memory>
 
 namespace AAV {
@@ -30,6 +32,8 @@ private:
     SceneWindow sceneWindow;
     InspectorWindow inspectorWindow;
     HierarchyWindow hierarchyWindow;
+    LogWindow logWindow;
+    ModelInfoWindow modelInfoWindow;
     
     // Model data
     std::shared_ptr<Model> currentModel;

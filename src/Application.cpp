@@ -3,6 +3,7 @@
 #include "rlImGui.h"
 #include "imgui.h"
 #include "nfd.hpp"
+#include "util/Logger.h"
 #include <iostream>
 
 namespace AAV {
@@ -49,8 +50,8 @@ bool Application::Initialize(int width, int height, const char* title) {
     
     initialized = true;
     
-    std::cout << "Application initialized successfully" << std::endl;
-    std::cout << "Screen: " << screenWidth << "x" << screenHeight << std::endl;
+    Logger::Info("Application initialized successfully");
+    Logger::Info("Screen: " + std::to_string(screenWidth) + "x" + std::to_string(screenHeight));
     
     return true;
 }
@@ -79,6 +80,8 @@ void Application::Run() {
         sceneWindow.Render(currentModel);
         hierarchyWindow.Render(currentModel);
         inspectorWindow.Render(currentModel, selectedNode);
+        logWindow.Render();
+        modelInfoWindow.Render(currentModel);
         
         // Show ImGui demo if requested
         if (showImGuiDemo) {
@@ -102,7 +105,7 @@ void Application::Shutdown() {
     
     initialized = false;
     
-    std::cout << "Application shutdown complete" << std::endl;
+    Logger::Info("Application shutdown complete");
 }
 
 void Application::SetupImGuiDocking() {
@@ -154,6 +157,14 @@ void Application::HandleCallbacks() {
         hierarchyWindow.SetVisible(!hierarchyWindow.IsVisible());
     };
     
+    menuBar.onToggleLog = [this]() {
+        logWindow.SetVisible(!logWindow.IsVisible());
+    };
+    
+    menuBar.onToggleModelInfo = [this]() {
+        modelInfoWindow.SetVisible(!modelInfoWindow.IsVisible());
+    };
+    
     menuBar.onResetCamera = [this]() {
         sceneWindow.ResetCamera();
     };
@@ -194,7 +205,7 @@ void Application::OpenModelDialog() {
 }
 
 void Application::LoadModelFile(const std::string& filePath) {
-    std::cout << "Loading model: " << filePath << std::endl;
+    Logger::Info("Loading model: " + filePath);
     
     auto model = modelLoader.LoadModel(filePath);
     
@@ -202,9 +213,9 @@ void Application::LoadModelFile(const std::string& filePath) {
         currentModel = model;
         // Frame the model in the scene view
         sceneWindow.FrameModel(currentModel);
-        std::cout << "Model loaded successfully!" << std::endl;
+        Logger::Info("Model loaded successfully!");
     } else {
-        std::cerr << "Failed to load model: " << modelLoader.GetLastError() << std::endl;
+        Logger::Error("Failed to load model: " + modelLoader.GetLastError());
     }
 }
 

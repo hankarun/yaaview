@@ -47,11 +47,7 @@ void InspectorWindow::Render(std::shared_ptr<Model> model, NodeData* selectedNod
         ImGui::TextDisabled("Model-wide properties:");
     }
     
-    // Render all sections with collapsible headers
-    if (ImGui::CollapsingHeader("Model Info", selectedNode ? 0 : ImGuiTreeNodeFlags_DefaultOpen)) {
-        RenderModelInfo(*model);
-    }
-    
+    // Render model-wide sections
     if (ImGui::CollapsingHeader("Transform")) {
         RenderTransform(*model);
     }
@@ -69,36 +65,6 @@ void InspectorWindow::Render(std::shared_ptr<Model> model, NodeData* selectedNod
     }
     
     ImGui::End();
-}
-
-void InspectorWindow::RenderModelInfo(Model& model) {
-    ImGui::Indent();
-    
-    ImGui::Text("Filename: %s", model.GetFilename().c_str());
-    ImGui::Separator();
-    
-    ImGui::Text("Meshes: %d", model.GetMeshCount());
-    ImGui::Text("Materials: %d", model.GetMaterialCount());
-    ImGui::Text("Textures: %d", model.GetTotalTexturesLoaded());
-    ImGui::Text("Animations: %d", model.GetAnimationCount());
-    
-    ImGui::Separator();
-    
-    ImGui::Text("Total Vertices: %d", model.GetTotalVertices());
-    ImGui::Text("Total Faces: %d", model.GetTotalFaces());
-    
-    ImGui::Separator();
-    
-    Vector3 size = model.GetBoundingBoxSize();
-    ImGui::Text("Bounding Box:");
-    ImGui::BulletText("Size: (%.2f, %.2f, %.2f)", size.x, size.y, size.z);
-    
-    Vector3 min = model.GetBoundingBoxMin();
-    Vector3 max = model.GetBoundingBoxMax();
-    ImGui::BulletText("Min: (%.2f, %.2f, %.2f)", min.x, min.y, min.z);
-    ImGui::BulletText("Max: (%.2f, %.2f, %.2f)", max.x, max.y, max.z);
-    
-    ImGui::Unindent();
 }
 
 void InspectorWindow::RenderTransform(Model& model) {

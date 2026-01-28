@@ -16,7 +16,6 @@ public:
     void SetVisible(bool vis) { visible = vis; }
     
 private:
-    void RenderModelInfo(Model& model);
     void RenderTransform(Model& model);
     void RenderMaterials(Model& model);
     void RenderHierarchy(Model& model);

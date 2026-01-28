@@ -76,6 +76,9 @@ add_executable(${PROJECT_NAME}
     src/ui/SceneWindow.cpp
     src/ui/InspectorWindow.cpp
     src/ui/HierarchyWindow.cpp
+    src/ui/LogWindow.cpp
+    src/ui/ModelInfoWindow.cpp
+    src/util/Logger.cpp
 )
 
 # Include directories
