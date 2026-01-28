@@ -10,7 +10,8 @@ public:
     ModelRenderer();
     ~ModelRenderer();
     
-    void Render(const Model& model);
+    void Initialize();
+    void Render(const Model& model, Camera3D camera);
     void RenderWireframe(const Model& model);
     void RenderBoundingBox(const Model& model);
     void RenderGrid(float size, int divisions);
@@ -27,17 +28,34 @@ public:
     void SetLightColor(Color color) { lightColor = color; }
     void SetLightIntensity(float intensity) { lightIntensity = intensity; }
     
+    // Shader control
+    void SetPBREnabled(bool enabled) { pbrEnabled = enabled; }
+    bool GetPBREnabled() const { return pbrEnabled; }
+    
+    void SetNormalMappingEnabled(bool enabled) { normalMappingEnabled = enabled; }
+    bool GetNormalMappingEnabled() const { return normalMappingEnabled; }
+    
+    bool IsShadersLoaded() const { return shadersLoaded; }
+    
 private:
-    void RenderNodeHierarchy(NodeData* node, const Matrix& parentTransform, const Model& model);
+    void RenderNodeHierarchy(NodeData* node, const Matrix& parentTransform, const Model& model, Camera3D camera);
+    void RenderMeshBoundingBox(const MeshData& meshData, const Matrix& transform);
+    void SetMaterialUniforms(const MaterialData& material);
     
     bool wireframeMode;
     bool showBoundingBox;
     
-    // Lighting properties (for future shader implementation)
+    // Lighting properties
     bool lightEnabled;
     Vector3 lightDirection;
     Color lightColor;
     float lightIntensity;
+    
+    // Shader system
+    Shader pbrShader;
+    bool shadersLoaded;
+    bool pbrEnabled;
+    bool normalMappingEnabled;
 };
 
 } // namespace AAV

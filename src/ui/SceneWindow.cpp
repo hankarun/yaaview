@@ -43,6 +43,9 @@ void SceneWindow::Initialize() {
     // Create render texture for the 3D scene
     renderTexture = LoadRenderTexture(1280, 720);
     
+    // Initialize renderer (load shaders)
+    renderer.Initialize();
+    
     initialized = true;
 }
 
@@ -213,7 +216,7 @@ void SceneWindow::RenderScene(std::shared_ptr<Model> model) {
     
     // Render model if loaded
     if (model && model->IsLoaded()) {
-        renderer.Render(*model);
+        renderer.Render(*model, camera);
     }
     
     EndMode3D();

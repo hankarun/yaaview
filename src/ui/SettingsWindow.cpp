@@ -86,6 +86,65 @@ void SettingsWindow::Render(SceneWindow* sceneWindow) {
         ImGui::Spacing();
     }
     
+    // Shader Settings Section
+    if (ImGui::CollapsingHeader("Shader Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        auto& renderer = sceneWindow->GetRenderer();
+        
+        // Show shader status
+        if (renderer.IsShadersLoaded()) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "PBR Shaders: Loaded");
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.0f, 1.0f), "PBR Shaders: Not Loaded");
+            ImGui::TextWrapped("Shaders failed to load. Using default rendering.");
+        }
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Only show shader options if shaders are loaded
+        if (renderer.IsShadersLoaded()) {
+            bool pbrEnabled = renderer.GetPBREnabled();
+            if (ImGui::Checkbox("Enable PBR Rendering", &pbrEnabled)) {
+                renderer.SetPBREnabled(pbrEnabled);
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("(?)");
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::TextUnformatted("Physically Based Rendering with metallic-roughness workflow");
+                ImGui::EndTooltip();
+            }
+            
+            bool normalMapping = renderer.GetNormalMappingEnabled();
+            if (ImGui::Checkbox("Enable Normal Mapping", &normalMapping)) {
+                renderer.SetNormalMappingEnabled(normalMapping);
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("(?)");
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::TextUnformatted("Use normal maps for surface detail");
+                ImGui::EndTooltip();
+            }
+            
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            
+            ImGui::TextWrapped("Shader Features:");
+            ImGui::BulletText("Metallic-Roughness PBR workflow");
+            ImGui::BulletText("Directional lighting");
+            ImGui::BulletText("Normal mapping");
+            ImGui::BulletText("Emissive materials");
+            ImGui::BulletText("Ambient occlusion");
+            ImGui::BulletText("HDR tone mapping");
+            ImGui::BulletText("Gamma correction");
+        }
+        
+        ImGui::Spacing();
+    }
+    
     ImGui::Separator();
     ImGui::Spacing();
     
@@ -97,6 +156,8 @@ void SettingsWindow::Render(SceneWindow* sceneWindow) {
         sceneWindow->SetBackgroundColor(Color{45, 45, 48, 255});
         sceneWindow->GetRenderer().SetWireframeMode(false);
         sceneWindow->GetRenderer().SetShowBoundingBox(false);
+        sceneWindow->GetRenderer().SetPBREnabled(true);
+        sceneWindow->GetRenderer().SetNormalMappingEnabled(true);
     }
     
     ImGui::SameLine();
