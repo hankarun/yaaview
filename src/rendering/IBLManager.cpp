@@ -35,6 +35,7 @@ bool IBLManager::Initialize() {
     
     // Initialize shader locations
     skyboxShader.locs[SHADER_LOC_MATRIX_MVP] = GetShaderLocation(skyboxShader, "mvp");
+    skyboxShader.locs[SHADER_LOC_MAP_CUBEMAP] = GetShaderLocation(skyboxShader, "environmentMap");
     
     // Create skybox cube mesh (large cube for skybox)
     skyboxMesh = GenMeshCube(1.0f, 1.0f, 1.0f);
@@ -406,11 +407,10 @@ void IBLManager::RenderSkybox(Camera3D camera, int viewportWidth, int viewportHe
     
     // Calculate projection matrix using RENDER TEXTURE aspect ratio
     float aspect = (float)viewportWidth / (float)viewportHeight;
-    Matrix projMatrix = MatrixPerspective(camera.fovy * DEG2RAD, aspect, 0.01, 1000.0);
+    Matrix projMatrix = MatrixPerspective(camera.fovy * DEG2RAD, aspect, 0.1, 1000.0);
     
-    // Include scale in MVP calculation so it affects projection
-    Matrix scaleMatrix = MatrixScale(500.0f, 500.0f, 500.0f);
-    Matrix mvpMatrix = MatrixMultiply(MatrixMultiply(scaleMatrix, viewMatrix), projMatrix);
+    // Calculate MVP: projection * view (no scale in MVP)
+    Matrix mvpMatrix = MatrixMultiply(viewMatrix, projMatrix);
     
     SetShaderValueMatrix(skyboxShader, skyboxShader.locs[SHADER_LOC_MATRIX_MVP], mvpMatrix);
     
@@ -419,8 +419,9 @@ void IBLManager::RenderSkybox(Camera3D camera, int viewportWidth, int viewportHe
     skyboxMat.shader = skyboxShader;
     skyboxMat.maps[MATERIAL_MAP_CUBEMAP].texture = environmentMap;
     
-    // Draw skybox without additional transform (already in MVP)
-    DrawMesh(skyboxMesh, skyboxMat, MatrixIdentity());
+    // Draw skybox with large scale transform (applied before MVP in model space)
+    Matrix skyboxTransform = MatrixScale(500.0f, 500.0f, 500.0f);
+    DrawMesh(skyboxMesh, skyboxMat, skyboxTransform);
     
     // Don't unload material - it would unload our shader
     // The material is lightweight and only allocated on stack
