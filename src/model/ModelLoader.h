@@ -4,6 +4,14 @@
 #include <memory>
 #include <string>
 
+// Forward declarations for Assimp types
+struct aiNode;
+struct aiMaterial;
+struct aiTexture;
+
+// Include for aiTextureType enum
+#include <assimp/material.h>
+
 namespace AAV {
 
 class ModelLoader {
@@ -19,6 +27,15 @@ public:
     
 private:
     std::string lastError;
+    std::string modelDirectory;  // Store model's directory for texture loading
+    
+    // Recursive node processing
+    std::shared_ptr<NodeData> ProcessNode(aiNode* aiNode, NodeData* parent);
+    
+    // Texture loading helpers
+    Texture2D LoadTextureFromFile(const std::string& path);
+    Texture2D LoadEmbeddedTexture(const aiTexture* aiTex);
+    std::string ExtractTexturePath(aiMaterial* material, aiTextureType type);
 };
 
 } // namespace AAV

@@ -2,6 +2,7 @@
 #include "raylib.h"
 #include "rlImGui.h"
 #include "imgui.h"
+#include "nfd.hpp"
 #include <iostream>
 
 namespace AAV {
@@ -11,6 +12,7 @@ Application::Application()
     , showImGuiDemo(false)
     , screenWidth(1280)
     , screenHeight(720)
+    , selectedNode(nullptr)
 {
 }
 
@@ -39,6 +41,11 @@ bool Application::Initialize(int width, int height, const char* title) {
     
     // Setup callbacks
     HandleCallbacks();
+    
+    // Setup hierarchy window callback
+    hierarchyWindow.onNodeSelected = [this](NodeData* node) {
+        selectedNode = node;
+    };
     
     initialized = true;
     
@@ -70,7 +77,8 @@ void Application::Run() {
         // Render UI components
         menuBar.Render();
         sceneWindow.Render(currentModel);
-        inspectorWindow.Render(currentModel);
+        hierarchyWindow.Render(currentModel);
+        inspectorWindow.Render(currentModel, selectedNode);
         
         // Show ImGui demo if requested
         if (showImGuiDemo) {
@@ -142,6 +150,10 @@ void Application::HandleCallbacks() {
         sceneWindow.SetVisible(!sceneWindow.IsVisible());
     };
     
+    menuBar.onToggleHierarchy = [this]() {
+        hierarchyWindow.SetVisible(!hierarchyWindow.IsVisible());
+    };
+    
     menuBar.onResetCamera = [this]() {
         sceneWindow.ResetCamera();
     };
@@ -159,18 +171,25 @@ void Application::HandleCallbacks() {
 }
 
 void Application::OpenModelDialog() {
-    // Simple implementation for now - prompt for path
-    // TODO: Implement native file dialog per platform
-    std::cout << "\n=== Open Model File ===" << std::endl;
-    std::cout << "Enter the full path to your 3D model file:" << std::endl;
-    std::cout << "(Supported formats: OBJ, FBX, GLTF, GLB, DAE, 3DS, BLEND, STL)" << std::endl;
-    std::cout << "Path: ";
+    // Use native file dialog
+    NFD::Guard nfdGuard;
     
-    std::string filePath;
-    std::getline(std::cin, filePath);
+    // Define file filters for 3D model formats
+    nfdfilteritem_t filters[] = {
+        { "3D Models", "obj,fbx,gltf,glb,dae,3ds,blend,stl,ply,x,md2,md3,md5mesh,ase,ifc" },
+        { "All Files", "*" }
+    };
     
-    if (!filePath.empty()) {
+    NFD::UniquePath outPath;
+    nfdresult_t result = NFD::OpenDialog(outPath, filters, 2);
+    
+    if (result == NFD_OKAY) {
+        std::string filePath(outPath.get());
         LoadModelFile(filePath);
+    } else if (result == NFD_CANCEL) {
+        std::cout << "User cancelled file dialog" << std::endl;
+    } else {
+        std::cerr << "Error opening file dialog: " << NFD::GetError() << std::endl;
     }
 }
 

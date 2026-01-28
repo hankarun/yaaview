@@ -36,6 +36,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(rlimgui)
 
+# Fetch nativefiledialog-extended
+FetchContent_Declare(
+    nfd
+    GIT_REPOSITORY https://github.com/btzy/nativefiledialog-extended.git
+    GIT_TAG master
+)
+FetchContent_MakeAvailable(nfd)
+
 # Find system-installed assimp (via Homebrew)
 find_package(assimp REQUIRED)
 
@@ -67,6 +75,7 @@ add_executable(${PROJECT_NAME}
     src/ui/MainMenuBar.cpp
     src/ui/SceneWindow.cpp
     src/ui/InspectorWindow.cpp
+    src/ui/HierarchyWindow.cpp
 )
 
 # Include directories
@@ -83,6 +92,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     rlimgui_lib
     imgui_impl
     assimp::assimp
+    nfd
 )
 
 # Platform-specific settings

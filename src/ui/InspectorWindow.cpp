@@ -15,7 +15,7 @@ InspectorWindow::InspectorWindow()
 InspectorWindow::~InspectorWindow() {
 }
 
-void InspectorWindow::Render(std::shared_ptr<Model> model) {
+void InspectorWindow::Render(std::shared_ptr<Model> model, NodeData* selectedNode) {
     if (!visible) return;
     
     ImGui::Begin("Inspector", &visible);
@@ -27,12 +27,32 @@ void InspectorWindow::Render(std::shared_ptr<Model> model) {
         return;
     }
     
+    // If a node is selected, show node-specific information
+    if (selectedNode) {
+        if (ImGui::CollapsingHeader("Node Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+            RenderNodeInfo(selectedNode, *model);
+        }
+        
+        if (ImGui::CollapsingHeader("Node Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
+            RenderNodeTransform(selectedNode);
+        }
+        
+        if (!selectedNode->meshIndices.empty()) {
+            if (ImGui::CollapsingHeader("Meshes", ImGuiTreeNodeFlags_DefaultOpen)) {
+                RenderNodeMeshes(selectedNode, *model);
+            }
+        }
+        
+        ImGui::Separator();
+        ImGui::TextDisabled("Model-wide properties:");
+    }
+    
     // Render all sections with collapsible headers
-    if (ImGui::CollapsingHeader("Model Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Model Info", selectedNode ? 0 : ImGuiTreeNodeFlags_DefaultOpen)) {
         RenderModelInfo(*model);
     }
     
-    if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Transform")) {
         RenderTransform(*model);
     }
     
@@ -59,6 +79,7 @@ void InspectorWindow::RenderModelInfo(Model& model) {
     
     ImGui::Text("Meshes: %d", model.GetMeshCount());
     ImGui::Text("Materials: %d", model.GetMaterialCount());
+    ImGui::Text("Textures: %d", model.GetTotalTexturesLoaded());
     ImGui::Text("Animations: %d", model.GetAnimationCount());
     
     ImGui::Separator();
@@ -232,6 +253,161 @@ void InspectorWindow::RenderAnimations(Model& model) {
             
             // TODO: Add playback controls
             ImGui::TextDisabled("(Animation playback not yet implemented)");
+            
+            ImGui::TreePop();
+        }
+    }
+    
+    ImGui::Unindent();
+}
+
+void InspectorWindow::RenderNodeInfo(NodeData* node, Model& model) {
+    ImGui::Indent();
+    
+    ImGui::Text("Node Name: %s", node->name.empty() ? "<unnamed>" : node->name.c_str());
+    
+    if (node->parent) {
+        ImGui::Text("Parent: %s", node->parent->name.empty() ? "<unnamed>" : node->parent->name.c_str());
+    } else {
+        ImGui::Text("Parent: <root>");
+    }
+    
+    ImGui::Text("Children: %d", (int)node->children.size());
+    ImGui::Text("Attached Meshes: %d", (int)node->meshIndices.size());
+    
+    ImGui::Unindent();
+}
+
+void InspectorWindow::RenderNodeTransform(NodeData* node) {
+    ImGui::Indent();
+    
+    // Extract transform information from the node's matrix
+    // For now, we'll display the matrix values
+    ImGui::Text("Local Transform Matrix:");
+    
+    Matrix& m = node->transform;
+    ImGui::TextDisabled("[ %.2f %.2f %.2f %.2f ]", m.m0, m.m4, m.m8, m.m12);
+    ImGui::TextDisabled("[ %.2f %.2f %.2f %.2f ]", m.m1, m.m5, m.m9, m.m13);
+    ImGui::TextDisabled("[ %.2f %.2f %.2f %.2f ]", m.m2, m.m6, m.m10, m.m14);
+    ImGui::TextDisabled("[ %.2f %.2f %.2f %.2f ]", m.m3, m.m7, m.m11, m.m15);
+    
+    ImGui::Separator();
+    
+    // Extract position from matrix (translation component)
+    ImGui::Text("Position: (%.2f, %.2f, %.2f)", m.m12, m.m13, m.m14);
+    
+    // Note: Full decomposition would require more complex math
+    ImGui::TextDisabled("(Full transform decomposition coming soon)");
+    
+    ImGui::Unindent();
+}
+
+void InspectorWindow::RenderNodeMeshes(NodeData* node, Model& model) {
+    ImGui::Indent();
+    
+    const auto& meshes = model.GetMeshes();
+    
+    for (size_t i = 0; i < node->meshIndices.size(); i++) {
+        int meshIndex = node->meshIndices[i];
+        
+        if (meshIndex < 0 || meshIndex >= (int)meshes.size()) {
+            ImGui::Text("Mesh %d: <invalid index>", meshIndex);
+            continue;
+        }
+        
+        const MeshData& meshData = meshes[meshIndex];
+        
+        std::string label = meshData.name.empty() ? 
+            "Mesh " + std::to_string(meshIndex) : meshData.name;
+        
+        if (ImGui::TreeNode((void*)(intptr_t)(meshIndex + 1000), "%s", label.c_str())) {
+            ImGui::Text("Vertices: %d", meshData.mesh.vertexCount);
+            ImGui::Text("Triangles: %d", meshData.mesh.triangleCount);
+            ImGui::Text("Material Index: %d", meshData.materialIndex);
+            
+            ImGui::Separator();
+            ImGui::Text("Bounding Box:");
+            ImGui::BulletText("Min: (%.2f, %.2f, %.2f)", 
+                meshData.minBounds.x, meshData.minBounds.y, meshData.minBounds.z);
+            ImGui::BulletText("Max: (%.2f, %.2f, %.2f)", 
+                meshData.maxBounds.x, meshData.maxBounds.y, meshData.maxBounds.z);
+            
+            // Show material properties
+            const auto& materials = model.GetMaterials();
+            if (meshData.materialIndex >= 0 && meshData.materialIndex < (int)materials.size()) {
+                ImGui::Separator();
+                const MaterialData& mat = materials[meshData.materialIndex];
+                
+                ImGui::Text("Material: %s", mat.name.empty() ? "<unnamed>" : mat.name.c_str());
+                
+                ImVec4 diffuse = ImVec4(
+                    mat.diffuseColor.r / 255.0f,
+                    mat.diffuseColor.g / 255.0f,
+                    mat.diffuseColor.b / 255.0f,
+                    1.0f
+                );
+                ImGui::ColorEdit3("Diffuse", (float*)&diffuse, ImGuiColorEditFlags_NoInputs);
+                
+                ImVec4 specular = ImVec4(
+                    mat.specularColor.r / 255.0f,
+                    mat.specularColor.g / 255.0f,
+                    mat.specularColor.b / 255.0f,
+                    1.0f
+                );
+                ImGui::ColorEdit3("Specular", (float*)&specular, ImGuiColorEditFlags_NoInputs);
+                
+                ImGui::Text("Shininess: %.2f", mat.shininess);
+                
+                // Helper lambda for rendering texture info with preview
+                auto renderTextureInfo = [](const char* label, const std::string& path, 
+                                             bool hasTexture, const Texture2D& texture) {
+                    if (!path.empty()) {
+                        ImGui::Separator();
+                        ImGui::Text("%s:", label);
+                        ImGui::Indent();
+                        ImGui::BulletText("Path: %s", path.c_str());
+                        
+                        if (hasTexture && texture.id != 0) {
+                            ImGui::SameLine();
+                            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "[Loaded]");
+                            ImGui::BulletText("Size: %dx%d", texture.width, texture.height);
+                            
+                            // Show thumbnail preview
+                            float previewSize = 128.0f;
+                            float aspectRatio = (float)texture.width / (float)texture.height;
+                            ImVec2 imageSize;
+                            if (aspectRatio > 1.0f) {
+                                imageSize = ImVec2(previewSize, previewSize / aspectRatio);
+                            } else {
+                                imageSize = ImVec2(previewSize * aspectRatio, previewSize);
+                            }
+                            
+                            ImGui::Image((void*)(intptr_t)texture.id, imageSize);
+                        } else {
+                            ImGui::SameLine();
+                            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "[Failed]");
+                        }
+                        
+                        ImGui::Unindent();
+                    }
+                };
+                
+                // Render all texture types
+                renderTextureInfo("Diffuse", mat.diffuseTexturePath, 
+                                  mat.hasDiffuseTexture, mat.diffuseTexture);
+                renderTextureInfo("Specular", mat.specularTexturePath, 
+                                  mat.hasSpecularTexture, mat.specularTexture);
+                renderTextureInfo("Normal", mat.normalTexturePath, 
+                                  mat.hasNormalTexture, mat.normalTexture);
+                renderTextureInfo("Metalness", mat.metalnessTexturePath, 
+                                  mat.hasMetalnessTexture, mat.metalnessTexture);
+                renderTextureInfo("Roughness", mat.roughnessTexturePath, 
+                                  mat.hasRoughnessTexture, mat.roughnessTexture);
+                renderTextureInfo("Ambient Occlusion", mat.aoTexturePath, 
+                                  mat.hasAOTexture, mat.aoTexture);
+                renderTextureInfo("Emissive", mat.emissiveTexturePath, 
+                                  mat.hasEmissiveTexture, mat.emissiveTexture);
+            }
             
             ImGui::TreePop();
         }

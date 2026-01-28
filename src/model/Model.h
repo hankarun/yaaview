@@ -23,9 +23,54 @@ struct MaterialData {
     Color specularColor;
     Color ambientColor;
     float shininess;
+    
+    // Texture paths (for reference/debugging)
     std::string diffuseTexturePath;
     std::string specularTexturePath;
     std::string normalTexturePath;
+    std::string metalnessTexturePath;
+    std::string roughnessTexturePath;
+    std::string aoTexturePath;
+    std::string emissiveTexturePath;
+    
+    // Loaded texture data
+    Texture2D diffuseTexture;
+    Texture2D specularTexture;
+    Texture2D normalTexture;
+    Texture2D metalnessTexture;
+    Texture2D roughnessTexture;
+    Texture2D aoTexture;
+    Texture2D emissiveTexture;
+    
+    // Texture load status flags
+    bool hasDiffuseTexture;
+    bool hasSpecularTexture;
+    bool hasNormalTexture;
+    bool hasMetalnessTexture;
+    bool hasRoughnessTexture;
+    bool hasAOTexture;
+    bool hasEmissiveTexture;
+    
+    // Constructor to initialize flags
+    MaterialData() 
+        : shininess(32.0f)
+        , hasDiffuseTexture(false)
+        , hasSpecularTexture(false)
+        , hasNormalTexture(false)
+        , hasMetalnessTexture(false)
+        , hasRoughnessTexture(false)
+        , hasAOTexture(false)
+        , hasEmissiveTexture(false)
+    {
+        // Initialize textures to invalid
+        diffuseTexture.id = 0;
+        specularTexture.id = 0;
+        normalTexture.id = 0;
+        metalnessTexture.id = 0;
+        roughnessTexture.id = 0;
+        aoTexture.id = 0;
+        emissiveTexture.id = 0;
+    }
 };
 
 struct AnimationData {
@@ -59,6 +104,7 @@ public:
     // Statistics
     int GetTotalVertices() const;
     int GetTotalFaces() const;
+    int GetTotalTexturesLoaded() const;
     Vector3 GetBoundingBoxMin() const { return boundingBoxMin; }
     Vector3 GetBoundingBoxMax() const { return boundingBoxMax; }
     Vector3 GetBoundingBoxSize() const;

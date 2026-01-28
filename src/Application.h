@@ -5,6 +5,7 @@
 #include "ui/MainMenuBar.h"
 #include "ui/SceneWindow.h"
 #include "ui/InspectorWindow.h"
+#include "ui/HierarchyWindow.h"
 #include <memory>
 
 namespace AAV {
@@ -28,10 +29,12 @@ private:
     MainMenuBar menuBar;
     SceneWindow sceneWindow;
     InspectorWindow inspectorWindow;
+    HierarchyWindow hierarchyWindow;
     
     // Model data
     std::shared_ptr<Model> currentModel;
     ModelLoader modelLoader;
+    NodeData* selectedNode;  // Currently selected node in hierarchy
     
     // Application state
     bool initialized;

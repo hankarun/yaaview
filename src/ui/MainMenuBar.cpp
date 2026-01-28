@@ -6,6 +6,7 @@ namespace AAV {
 MainMenuBar::MainMenuBar()
     : inspectorVisible(true)
     , sceneVisible(true)
+    , hierarchyVisible(true)
     , showAboutPopup(false)
     , showControlsPopup(false)
 {
@@ -49,6 +50,11 @@ void MainMenuBar::Render() {
             if (ImGui::MenuItem("Scene", nullptr, sceneVisible)) {
                 sceneVisible = !sceneVisible;
                 if (onToggleScene) onToggleScene();
+            }
+            
+            if (ImGui::MenuItem("Hierarchy", nullptr, hierarchyVisible)) {
+                hierarchyVisible = !hierarchyVisible;
+                if (onToggleHierarchy) onToggleHierarchy();
             }
             
             ImGui::Separator();

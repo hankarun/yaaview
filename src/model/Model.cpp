@@ -21,6 +21,31 @@ Model::~Model() {
         UnloadMesh(meshData.mesh);
         UnloadMaterial(meshData.material);
     }
+    
+    // Cleanup textures from MaterialData
+    for (auto& mat : materials) {
+        if (mat.hasDiffuseTexture && mat.diffuseTexture.id != 0) {
+            UnloadTexture(mat.diffuseTexture);
+        }
+        if (mat.hasSpecularTexture && mat.specularTexture.id != 0) {
+            UnloadTexture(mat.specularTexture);
+        }
+        if (mat.hasNormalTexture && mat.normalTexture.id != 0) {
+            UnloadTexture(mat.normalTexture);
+        }
+        if (mat.hasMetalnessTexture && mat.metalnessTexture.id != 0) {
+            UnloadTexture(mat.metalnessTexture);
+        }
+        if (mat.hasRoughnessTexture && mat.roughnessTexture.id != 0) {
+            UnloadTexture(mat.roughnessTexture);
+        }
+        if (mat.hasAOTexture && mat.aoTexture.id != 0) {
+            UnloadTexture(mat.aoTexture);
+        }
+        if (mat.hasEmissiveTexture && mat.emissiveTexture.id != 0) {
+            UnloadTexture(mat.emissiveTexture);
+        }
+    }
 }
 
 int Model::GetTotalVertices() const {
@@ -37,6 +62,20 @@ int Model::GetTotalFaces() const {
         total += meshData.mesh.triangleCount;
     }
     return total;
+}
+
+int Model::GetTotalTexturesLoaded() const {
+    int count = 0;
+    for (const auto& mat : materials) {
+        if (mat.hasDiffuseTexture) count++;
+        if (mat.hasSpecularTexture) count++;
+        if (mat.hasNormalTexture) count++;
+        if (mat.hasMetalnessTexture) count++;
+        if (mat.hasRoughnessTexture) count++;
+        if (mat.hasAOTexture) count++;
+        if (mat.hasEmissiveTexture) count++;
+    }
+    return count;
 }
 
 Vector3 Model::GetBoundingBoxSize() const {
