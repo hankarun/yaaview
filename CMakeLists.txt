@@ -44,8 +44,22 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nfd)
 
-# Find system-installed assimp (via Homebrew)
-find_package(assimp REQUIRED)
+# Platform-specific Assimp handling
+if(WIN32)
+    # On Windows, use FetchContent to get Assimp
+    FetchContent_Declare(
+        assimp
+        GIT_REPOSITORY https://github.com/assimp/assimp.git
+        GIT_TAG v6.0.4
+    )
+    set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
+    set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(assimp)
+elseif(APPLE)
+    # On macOS, use system-installed assimp (via Homebrew)
+    find_package(assimp REQUIRED)
+endif()
 
 
 # Create ImGui library
@@ -72,7 +86,6 @@ add_executable(${PROJECT_NAME}
     src/model/Model.cpp
     src/model/ModelLoader.cpp
     src/model/ModelRenderer.cpp
-    src/rendering/IBLManager.cpp
     src/ui/MainMenuBar.cpp
     src/ui/SceneWindow.cpp
     src/ui/InspectorWindow.cpp

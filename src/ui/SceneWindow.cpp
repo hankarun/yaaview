@@ -202,10 +202,7 @@ void SceneWindow::RenderScene(std::shared_ptr<Model> model) {
     ClearBackground(backgroundColor);
     
     BeginMode3D(camera);
-    
-    // Render skybox first (if enabled) - pass render texture dimensions
-    renderer.RenderSkybox(camera, renderTexture.texture.width, renderTexture.texture.height);
-    
+        
     // Sync lighting settings to renderer
     renderer.SetLightEnabled(lightEnabled);
     renderer.SetLightDirection(lightDirection);

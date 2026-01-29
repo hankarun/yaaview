@@ -505,11 +505,11 @@ Texture2D ModelLoader::LoadEmbeddedTexture(const aiTexture* aiTex) {
     } else {
         // Uncompressed ARGB8888 format
         Image img = {
-            .data = aiTex->pcData,
-            .width = (int)aiTex->mWidth,
-            .height = (int)aiTex->mHeight,
-            .mipmaps = 1,
-            .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8
+            aiTex->pcData,
+            (int)aiTex->mWidth,
+            (int)aiTex->mHeight,
+            1,
+            PIXELFORMAT_UNCOMPRESSED_R8G8B8A8
         };
         
         // Need to copy data because LoadTextureFromImage expects ownership

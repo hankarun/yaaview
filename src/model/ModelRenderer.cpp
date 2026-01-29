@@ -15,8 +15,6 @@ ModelRenderer::ModelRenderer()
     , shadersLoaded(false)
     , pbrEnabled(true)
     , normalMappingEnabled(true)
-    , iblEnabled(true)
-    , iblManager(std::make_unique<IBLManager>())
 {
 }
 
@@ -42,11 +40,6 @@ void ModelRenderer::Initialize() {
         pbrShader.locs[SHADER_LOC_MATRIX_MODEL] = GetShaderLocation(pbrShader, "matModel");
         pbrShader.locs[SHADER_LOC_MATRIX_NORMAL] = GetShaderLocation(pbrShader, "matNormal");
         pbrShader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(pbrShader, "viewPos");
-    }
-    
-    // Initialize IBL system
-    if (iblManager) {
-        iblManager->Initialize();
     }
 }
 
@@ -92,25 +85,7 @@ void ModelRenderer::Render(const Model& model, Camera3D camera) {
             
             int normalMappingEnabledInt = normalMappingEnabled ? 1 : 0;
             SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "enableNormalMapping"), &normalMappingEnabledInt, SHADER_UNIFORM_INT);
-            
-            // Set IBL uniforms
-            int iblEnabledInt = iblEnabled ? 1 : 0;
-            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "enableIBL"), &iblEnabledInt, SHADER_UNIFORM_INT);
-            
-            if (iblEnabled && iblManager && iblManager->IsLoaded()) {
-                // Set IBL texture uniforms with explicit texture slots
-                int irradianceLoc = GetShaderLocation(pbrShader, "irradianceMap");
-                rlActiveTextureSlot(6);
-                SetShaderValueTexture(pbrShader, irradianceLoc, iblManager->GetIrradianceMap());
-                
-                int prefilterLoc = GetShaderLocation(pbrShader, "prefilterMap");
-                rlActiveTextureSlot(7);
-                SetShaderValueTexture(pbrShader, prefilterLoc, iblManager->GetPrefilterMap());
-                
-                int brdfLoc = GetShaderLocation(pbrShader, "brdfLUT");
-                rlActiveTextureSlot(8);
-                SetShaderValueTexture(pbrShader, brdfLoc, iblManager->GetBRDFLUT());
-            }
+                        
         }
         
         for (const auto& meshData : meshes) {
@@ -179,25 +154,7 @@ void ModelRenderer::RenderNodeHierarchy(NodeData* node, const Matrix& parentTran
             
             int normalMappingEnabledInt = normalMappingEnabled ? 1 : 0;
             SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "enableNormalMapping"), &normalMappingEnabledInt, SHADER_UNIFORM_INT);
-            
-            // Set IBL uniforms
-            int iblEnabledInt = iblEnabled ? 1 : 0;
-            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "enableIBL"), &iblEnabledInt, SHADER_UNIFORM_INT);
-            
-            if (iblEnabled && iblManager && iblManager->IsLoaded()) {
-                // Set IBL texture uniforms with explicit texture slots
-                int irradianceLoc = GetShaderLocation(pbrShader, "irradianceMap");
-                rlActiveTextureSlot(6);
-                SetShaderValueTexture(pbrShader, irradianceLoc, iblManager->GetIrradianceMap());
-                
-                int prefilterLoc = GetShaderLocation(pbrShader, "prefilterMap");
-                rlActiveTextureSlot(7);
-                SetShaderValueTexture(pbrShader, prefilterLoc, iblManager->GetPrefilterMap());
-                
-                int brdfLoc = GetShaderLocation(pbrShader, "brdfLUT");
-                rlActiveTextureSlot(8);
-                SetShaderValueTexture(pbrShader, brdfLoc, iblManager->GetBRDFLUT());
-            }
+                    
         }
         
         const auto& meshes = model.GetMeshes();
@@ -279,7 +236,7 @@ void ModelRenderer::RenderBoundingBox(const Model& model) {
     };
     
     DrawBoundingBox(
-        (BoundingBox){
+        BoundingBox{
             Vector3Subtract(transformedCenter, Vector3Scale(transformedSize, 0.5f)),
             Vector3Add(transformedCenter, Vector3Scale(transformedSize, 0.5f))
         },
@@ -321,7 +278,8 @@ void ModelRenderer::RenderMeshBoundingBox(const MeshData& meshData, const Matrix
     }
     
     // Draw transformed bounding box
-    DrawBoundingBox((BoundingBox){newMin, newMax}, YELLOW);
+    BoundingBox transformedBox = {newMin, newMax};
+    DrawBoundingBox(transformedBox, YELLOW);
 }
 
 void ModelRenderer::SetMaterialUniforms(const MaterialData& material) {
@@ -358,25 +316,6 @@ void ModelRenderer::SetMaterialUniforms(const MaterialData& material) {
 
 void ModelRenderer::RenderGrid(float size, int divisions) {
     DrawGrid(divisions, size);
-}
-
-void ModelRenderer::RenderSkybox(Camera3D camera, int viewportWidth, int viewportHeight) {
-    if (iblManager && iblManager->IsLoaded()) {
-        iblManager->RenderSkybox(camera, viewportWidth, viewportHeight);
-    }
-}
-
-void ModelRenderer::SetSkyboxEnabled(bool enabled) {
-    if (iblManager) {
-        iblManager->SetSkyboxEnabled(enabled);
-    }
-}
-
-bool ModelRenderer::GetSkyboxEnabled() const {
-    if (iblManager) {
-        return iblManager->IsSkyboxEnabled();
-    }
-    return false;
 }
 
 } // namespace AAV
