@@ -31,6 +31,7 @@ bool Application::Initialize(int width, int height, const char* title) {
     screenHeight = height;
     
     // Initialize Raylib window
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(screenWidth, screenHeight, title);
     SetTargetFPS(60);
     
