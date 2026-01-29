@@ -337,6 +337,27 @@ void ModelRenderer::Initialize() {
         pbrShader.locs[SHADER_LOC_MATRIX_MODEL] = GetShaderLocation(pbrShader, "matModel");
         pbrShader.locs[SHADER_LOC_MATRIX_NORMAL] = GetShaderLocation(pbrShader, "matNormal");
         pbrShader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(pbrShader, "viewPos");
+        
+        // Set texture sampler locations ONCE (tell shader which texture unit each sampler uses)
+        int texUnit0 = 0;
+        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "albedoMap"), &texUnit0, SHADER_UNIFORM_INT);
+        
+        int texUnit1 = 1;
+        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "normalMap"), &texUnit1, SHADER_UNIFORM_INT);
+        
+        int texUnit2 = 2;
+        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "metallicMap"), &texUnit2, SHADER_UNIFORM_INT);
+        
+        int texUnit3 = 3;
+        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "roughnessMap"), &texUnit3, SHADER_UNIFORM_INT);
+        
+        int texUnit4 = 4;
+        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "aoMap"), &texUnit4, SHADER_UNIFORM_INT);
+        
+        int texUnit5 = 5;
+        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "emissiveMap"), &texUnit5, SHADER_UNIFORM_INT);
+        
+        std::cout << "Texture sampler locations configured" << std::endl;
     }
 }
 
@@ -580,53 +601,43 @@ void ModelRenderer::RenderMeshBoundingBox(const MeshData& meshData, const Matrix
 }
 
 void ModelRenderer::SetMaterialUniforms(const MaterialData& material) {
-    // Bind textures to texture units and set sampler uniforms
+    // Bind textures to their respective texture units
+    // (Sampler locations were already set during initialization)
+    
     // Texture unit 0: albedoMap
     if (material.hasDiffuseTexture && material.diffuseTexture.id > 0) {
         rlActiveTextureSlot(0);
         rlEnableTexture(material.diffuseTexture.id);
-        int texUnit = 0;
-        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "albedoMap"), &texUnit, SHADER_UNIFORM_INT);
     }
     
     // Texture unit 1: normalMap
     if (material.hasNormalTexture && material.normalTexture.id > 0) {
         rlActiveTextureSlot(1);
         rlEnableTexture(material.normalTexture.id);
-        int texUnit = 1;
-        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "normalMap"), &texUnit, SHADER_UNIFORM_INT);
     }
     
     // Texture unit 2: metallicMap
     if (material.hasMetalnessTexture && material.metalnessTexture.id > 0) {
         rlActiveTextureSlot(2);
         rlEnableTexture(material.metalnessTexture.id);
-        int texUnit = 2;
-        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "metallicMap"), &texUnit, SHADER_UNIFORM_INT);
     }
     
     // Texture unit 3: roughnessMap
     if (material.hasRoughnessTexture && material.roughnessTexture.id > 0) {
         rlActiveTextureSlot(3);
         rlEnableTexture(material.roughnessTexture.id);
-        int texUnit = 3;
-        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "roughnessMap"), &texUnit, SHADER_UNIFORM_INT);
     }
     
     // Texture unit 4: aoMap
     if (material.hasAOTexture && material.aoTexture.id > 0) {
         rlActiveTextureSlot(4);
         rlEnableTexture(material.aoTexture.id);
-        int texUnit = 4;
-        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "aoMap"), &texUnit, SHADER_UNIFORM_INT);
     }
     
     // Texture unit 5: emissiveMap
     if (material.hasEmissiveTexture && material.emissiveTexture.id > 0) {
         rlActiveTextureSlot(5);
         rlEnableTexture(material.emissiveTexture.id);
-        int texUnit = 5;
-        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "emissiveMap"), &texUnit, SHADER_UNIFORM_INT);
     }
     
     // Set texture availability flags
