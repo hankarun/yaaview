@@ -24,6 +24,10 @@ struct MaterialData {
     Color ambientColor;
     float shininess;
     
+    // PBR material properties
+    float metallicFactor;
+    float roughnessFactor;
+    
     // Texture paths (for reference/debugging)
     std::string diffuseTexturePath;
     std::string specularTexturePath;
@@ -54,6 +58,8 @@ struct MaterialData {
     // Constructor to initialize flags
     MaterialData() 
         : shininess(32.0f)
+        , metallicFactor(0.0f)
+        , roughnessFactor(0.5f)
         , hasDiffuseTexture(false)
         , hasSpecularTexture(false)
         , hasNormalTexture(false)

@@ -97,6 +97,15 @@ std::shared_ptr<Model> ModelLoader::LoadModel(const std::string& filePath) {
         aiMat->Get(AI_MATKEY_SHININESS, shininess);
         material.shininess = shininess;
         
+        // Get PBR properties (GLTF uses these)
+        float metallicFactor = 0.0f;
+        aiMat->Get(AI_MATKEY_METALLIC_FACTOR, metallicFactor);
+        material.metallicFactor = metallicFactor;
+        
+        float roughnessFactor = 0.5f;
+        aiMat->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughnessFactor);
+        material.roughnessFactor = roughnessFactor;
+        
         // === TEXTURE LOADING ===
         
         // Helper lambda to load a texture (external or embedded)
@@ -213,6 +222,9 @@ std::shared_ptr<Model> ModelLoader::LoadModel(const std::string& filePath) {
         if (aiMesh->mTextureCoords[0]) {
             mesh.texcoords = (float*)MemAlloc(mesh.vertexCount * 2 * sizeof(float));
         }
+        if (aiMesh->mTangents) {
+            mesh.tangents = (float*)MemAlloc(mesh.vertexCount * 4 * sizeof(float));
+        }
         
         // Calculate bounding box
         float minX = std::numeric_limits<float>::max();
@@ -235,6 +247,29 @@ std::shared_ptr<Model> ModelLoader::LoadModel(const std::string& filePath) {
             if (aiMesh->mTextureCoords[0]) {
                 mesh.texcoords[j * 2 + 0] = aiMesh->mTextureCoords[0][j].x;
                 mesh.texcoords[j * 2 + 1] = aiMesh->mTextureCoords[0][j].y;
+            }
+            
+            // Copy tangent data for PBR normal mapping
+            if (aiMesh->mTangents) {
+                mesh.tangents[j * 4 + 0] = aiMesh->mTangents[j].x;
+                mesh.tangents[j * 4 + 1] = aiMesh->mTangents[j].y;
+                mesh.tangents[j * 4 + 2] = aiMesh->mTangents[j].z;
+                // Calculate handedness (w component) using bitangent
+                // If bitangent exists, determine handedness via cross product
+                if (aiMesh->mBitangents) {
+                    // Compute cross product of normal and tangent
+                    float crossX = aiMesh->mNormals[j].y * aiMesh->mTangents[j].z - aiMesh->mNormals[j].z * aiMesh->mTangents[j].y;
+                    float crossY = aiMesh->mNormals[j].z * aiMesh->mTangents[j].x - aiMesh->mNormals[j].x * aiMesh->mTangents[j].z;
+                    float crossZ = aiMesh->mNormals[j].x * aiMesh->mTangents[j].y - aiMesh->mNormals[j].y * aiMesh->mTangents[j].x;
+                    
+                    // Check if cross product aligns with bitangent
+                    float dotProduct = crossX * aiMesh->mBitangents[j].x + 
+                                     crossY * aiMesh->mBitangents[j].y + 
+                                     crossZ * aiMesh->mBitangents[j].z;
+                    mesh.tangents[j * 4 + 3] = (dotProduct < 0.0f) ? -1.0f : 1.0f;
+                } else {
+                    mesh.tangents[j * 4 + 3] = 1.0f;  // Default handedness
+                }
             }
             
             // Update bounding box

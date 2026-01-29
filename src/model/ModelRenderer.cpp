@@ -339,6 +339,7 @@ void ModelRenderer::Initialize() {
         pbrShader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(pbrShader, "viewPos");
         
         // Set texture sampler locations ONCE (tell shader which texture unit each sampler uses)
+        // PBR Material textures: slots 0-5
         int texUnit0 = 0;
         SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "albedoMap"), &texUnit0, SHADER_UNIFORM_INT);
         
@@ -357,7 +358,17 @@ void ModelRenderer::Initialize() {
         int texUnit5 = 5;
         SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "emissiveMap"), &texUnit5, SHADER_UNIFORM_INT);
         
-        std::cout << "Texture sampler locations configured" << std::endl;
+        // IBL textures: slots 6-8 (to avoid conflicts with material textures)
+        int texUnit6 = 6;
+        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "irradianceMap"), &texUnit6, SHADER_UNIFORM_INT);
+        
+        int texUnit7 = 7;
+        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "prefilterMap"), &texUnit7, SHADER_UNIFORM_INT);
+        
+        int texUnit8 = 8;
+        SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "brdfLUT"), &texUnit8, SHADER_UNIFORM_INT);
+        
+        std::cout << "Texture sampler locations configured (Material: 0-5, IBL: 6-8)" << std::endl;
     }
 }
 
@@ -403,6 +414,10 @@ void ModelRenderer::Render(const Model& model, Camera3D camera) {
             
             int normalMappingEnabledInt = normalMappingEnabled ? 1 : 0;
             SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "enableNormalMapping"), &normalMappingEnabledInt, SHADER_UNIFORM_INT);
+            
+            // Disable IBL for now (no IBL textures loaded)
+            int iblEnabledInt = 0;
+            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "enableIBL"), &iblEnabledInt, SHADER_UNIFORM_INT);
                         
         }
         
@@ -413,9 +428,21 @@ void ModelRenderer::Render(const Model& model, Camera3D camera) {
                 if (meshData.materialIndex >= 0 && meshData.materialIndex < (int)model.GetMaterials().size()) {
                     SetMaterialUniforms(model.GetMaterials()[meshData.materialIndex]);
                 }
+                
+                // CRITICAL FIX: Clear material texture maps to prevent DrawMesh from rebinding textures
+                // Our PBR textures are already bound via SetMaterialUniforms() to slots 0-5
+                // DrawMesh should only render the mesh, not interfere with our texture bindings
+                // The PBR shader is already active via BeginShaderMode above
+                Material tempMaterial = meshData.material;
+                for (int i = 0; i < MATERIAL_MAP_BRDF; i++) {
+                    tempMaterial.maps[i].texture.id = 0;  // Clear texture to prevent rebinding
+                }
+                tempMaterial.shader = pbrShader; // Ensure using PBR shader
+                DrawMesh(meshData.mesh, tempMaterial, MatrixIdentity());
+            } else {
+                // Non-PBR path: use default raylib material rendering
+                DrawMesh(meshData.mesh, meshData.material, MatrixIdentity());
             }
-            
-            DrawMesh(meshData.mesh, meshData.material, MatrixIdentity());
             
             // Draw per-mesh bounding box if enabled
             if (showBoundingBox) {
@@ -472,13 +499,17 @@ void ModelRenderer::RenderNodeHierarchy(NodeData* node, const Matrix& parentTran
             
             int normalMappingEnabledInt = normalMappingEnabled ? 1 : 0;
             SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "enableNormalMapping"), &normalMappingEnabledInt, SHADER_UNIFORM_INT);
+            
+            // Disable IBL for now (no IBL textures loaded)
+            int iblEnabledInt = 0;
+            SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "enableIBL"), &iblEnabledInt, SHADER_UNIFORM_INT);
                     
         }
         
-        const auto& meshes = model.GetMeshes();
+         auto& meshes = model.GetMeshes();
         for (int meshIndex : node->meshIndices) {
             if (meshIndex >= 0 && meshIndex < (int)meshes.size()) {
-                const auto& meshData = meshes[meshIndex];
+                 auto& meshData = meshes[meshIndex];
                 
                 // Set material uniforms if PBR is enabled
                 if (pbrEnabled && shadersLoaded && lightEnabled) {
@@ -486,9 +517,21 @@ void ModelRenderer::RenderNodeHierarchy(NodeData* node, const Matrix& parentTran
                     if (meshData.materialIndex >= 0 && meshData.materialIndex < (int)model.GetMaterials().size()) {
                         SetMaterialUniforms(model.GetMaterials()[meshData.materialIndex]);
                     }
+                    
+                    // CRITICAL FIX: Clear material texture maps to prevent DrawMesh from rebinding textures
+                    // Our PBR textures are already bound via SetMaterialUniforms() to slots 0-5
+                    // DrawMesh should only render the mesh, not interfere with our texture bindings
+                    // The PBR shader is already active via BeginShaderMode above
+                    Material tempMaterial = meshData.material;
+                    for (int i = 0; i < MATERIAL_MAP_BRDF; i++) {
+                        tempMaterial.maps[i].texture.id = 0;  // Clear texture to prevent rebinding
+                    }
+                    tempMaterial.shader = pbrShader; // Ensure using PBR shader
+                    DrawMesh(meshData.mesh, tempMaterial, MatrixIdentity());
+                } else {
+                    // Non-PBR path: use default raylib material rendering
+                    DrawMesh(meshData.mesh, meshData.material, MatrixIdentity());
                 }
-                
-                DrawMesh(meshData.mesh, meshData.material, MatrixIdentity());
                 
                 // Draw per-mesh bounding box if enabled
                 if (showBoundingBox) {
@@ -601,43 +644,58 @@ void ModelRenderer::RenderMeshBoundingBox(const MeshData& meshData, const Matrix
 }
 
 void ModelRenderer::SetMaterialUniforms(const MaterialData& material) {
+    
     // Bind textures to their respective texture units
     // (Sampler locations were already set during initialization)
+    // CRITICAL: Always activate each slot and either bind a texture or disable it
+    // This prevents stale texture bindings from previous materials
     
     // Texture unit 0: albedoMap
+    rlActiveTextureSlot(0);
     if (material.hasDiffuseTexture && material.diffuseTexture.id > 0) {
-        rlActiveTextureSlot(0);
         rlEnableTexture(material.diffuseTexture.id);
+    } else {
+        rlDisableTexture();
     }
     
     // Texture unit 1: normalMap
+    rlActiveTextureSlot(1);
     if (material.hasNormalTexture && material.normalTexture.id > 0) {
-        rlActiveTextureSlot(1);
         rlEnableTexture(material.normalTexture.id);
+    } else {
+        rlDisableTexture();
     }
     
     // Texture unit 2: metallicMap
+    rlActiveTextureSlot(2);
     if (material.hasMetalnessTexture && material.metalnessTexture.id > 0) {
-        rlActiveTextureSlot(2);
         rlEnableTexture(material.metalnessTexture.id);
+    } else {
+        rlDisableTexture();
     }
     
     // Texture unit 3: roughnessMap
+    rlActiveTextureSlot(3);
     if (material.hasRoughnessTexture && material.roughnessTexture.id > 0) {
-        rlActiveTextureSlot(3);
         rlEnableTexture(material.roughnessTexture.id);
+    } else {
+        rlDisableTexture();
     }
     
     // Texture unit 4: aoMap
+    rlActiveTextureSlot(4);
     if (material.hasAOTexture && material.aoTexture.id > 0) {
-        rlActiveTextureSlot(4);
         rlEnableTexture(material.aoTexture.id);
+    } else {
+        rlDisableTexture();
     }
     
     // Texture unit 5: emissiveMap
+    rlActiveTextureSlot(5);
     if (material.hasEmissiveTexture && material.emissiveTexture.id > 0) {
-        rlActiveTextureSlot(5);
         rlEnableTexture(material.emissiveTexture.id);
+    } else {
+        rlDisableTexture();
     }
     
     // Set texture availability flags
@@ -663,11 +721,11 @@ void ModelRenderer::SetMaterialUniforms(const MaterialData& material) {
     Vector3 diffuseColor = {material.diffuseColor.r / 255.0f, material.diffuseColor.g / 255.0f, material.diffuseColor.b / 255.0f};
     SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "colDiffuse"), &diffuseColor, SHADER_UNIFORM_VEC3);
     
-    // Default metallic and roughness values if no texture
-    float metallicValue = 0.0f;
+    // Use material's metallic and roughness factors (from GLTF)
+    float metallicValue = material.metallicFactor;
     SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "metallicValue"), &metallicValue, SHADER_UNIFORM_FLOAT);
     
-    float roughnessValue = 0.5f;
+    float roughnessValue = material.roughnessFactor;
     SetShaderValue(pbrShader, GetShaderLocation(pbrShader, "roughnessValue"), &roughnessValue, SHADER_UNIFORM_FLOAT);
 }
 

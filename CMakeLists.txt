@@ -5,6 +5,16 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 11)
 
+# Enable debug symbols for shader debugging with RenderDoc
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    add_compile_definitions(GRAPHICS_API_OPENGL_DEBUG_CONTEXT)
+    if(MSVC)
+        add_compile_options(/Zi)
+    else()
+        add_compile_options(-g)
+    endif()
+endif()
+
 # Ignore homebrew paths to avoid broken minizip
 list(APPEND CMAKE_IGNORE_PATH "/opt/homebrew/Cellar/minizip" "/opt/homebrew/lib" "/opt/homebrew/include")
 
@@ -18,6 +28,7 @@ FetchContent_Declare(
     GIT_TAG 5.5
 )
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(OPENGL_DEBUG_CONTEXT ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(raylib)
 
 # Fetch Dear ImGui (required for rlImGui)
