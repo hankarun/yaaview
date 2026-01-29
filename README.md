@@ -1,4 +1,4 @@
-# AAV - Assimp Advanced Viewer
+# AAV - Yet Another Assimp Viewer
 
 <div align="center">
 
