@@ -127,19 +127,3 @@ endif()
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
-
-# Copy shader files to build directory
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/shaders
-    ${CMAKE_BINARY_DIR}/bin/shaders
-    COMMENT "Copying shader files to build directory"
-)
-
-# Copy HDR files to build directory
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/hdr
-    ${CMAKE_BINARY_DIR}/bin/hdr
-    COMMENT "Copying HDR files to build directory"
-)
