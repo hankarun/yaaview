@@ -145,7 +145,7 @@ void Application::HandleCallbacks() {
     };
     
     menuBar.onExit = []() {
-        // Window will close on next iteration
+        CloseWindow();
     };
     
     // View menu callbacks
