@@ -127,3 +127,61 @@ endif()
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
+
+# Install rules
+install(TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION bin
+    COMPONENT application
+)
+
+# Install shaders if they exist
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/build/bin/shaders")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build/bin/shaders"
+        DESTINATION bin
+        COMPONENT application
+    )
+endif()
+
+# Install HDR files if they exist
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/build/bin/hdr")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build/bin/hdr"
+        DESTINATION bin
+        COMPONENT application
+    )
+endif()
+
+# CPack configuration for NSIS installer
+include(CPack)
+
+set(CPACK_PACKAGE_NAME "AAV")
+set(CPACK_PACKAGE_VENDOR "YourCompany")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "AAV - 3D Model Viewer")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
+set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "AAV")
+
+# NSIS specific settings
+set(CPACK_GENERATOR "NSIS")
+set(CPACK_NSIS_PACKAGE_NAME "AAV")
+set(CPACK_NSIS_DISPLAY_NAME "AAV - 3D Model Viewer")
+set(CPACK_NSIS_HELP_LINK "https://github.com/yourrepo")
+set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/yourrepo")
+set(CPACK_NSIS_CONTACT "your.email@example.com")
+set(CPACK_NSIS_MODIFY_PATH ON)
+set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+
+# Create desktop shortcut
+set(CPACK_NSIS_CREATE_ICONS_EXTRA
+    "CreateShortCut '$DESKTOP\\\\AAV.lnk' '$INSTDIR\\\\bin\\\\AAV.exe'"
+)
+set(CPACK_NSIS_DELETE_ICONS_EXTRA
+    "Delete '$DESKTOP\\\\AAV.lnk'"
+)
+
+# Start menu shortcuts
+set(CPACK_PACKAGE_EXECUTABLES "AAV" "AAV - 3D Model Viewer")
+set(CPACK_NSIS_MENU_LINKS
+    "bin/AAV.exe" "AAV - 3D Model Viewer"
+)

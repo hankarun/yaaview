@@ -24,13 +24,15 @@ std::shared_ptr<Model> ModelLoader::LoadModel(const std::string& filePath) {
     Assimp::Importer importer;
     
     // Load the scene with useful postprocessing flags
+    // Raylib uses Y-up right-handed coordinate system
     const aiScene* scene = importer.ReadFile(filePath,
         aiProcess_Triangulate |           // Convert all primitives to triangles
         aiProcess_GenNormals |            // Generate normals if not present
         aiProcess_CalcTangentSpace |      // Calculate tangent space for normal mapping
         aiProcess_JoinIdenticalVertices | // Optimize by joining identical vertices
         aiProcess_SortByPType |           // Sort by primitive type
-        aiProcess_FlipUVs                 // Flip UVs for OpenGL
+        aiProcess_FlipUVs |               // Flip UVs for OpenGL
+        aiProcess_ConvertToLeftHanded     // Convert to left-handed (Raylib Y-up)
     );
     
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
