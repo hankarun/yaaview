@@ -10,6 +10,7 @@ out/
 *.swp
 *.swo
 *~
+imgui.ini
 
 # CMake
 CMakeCache.txt
